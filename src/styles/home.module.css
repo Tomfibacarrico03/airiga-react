@@ -1,0 +1,26 @@
+.tableContainer {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+}
+.architecturesTable {
+  width: 100%;
+  color: white;
+}
+.addArch {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none;
+  background-color: #1b1b1b;
+  color: rgb(255, 255, 255);
+  box-shadow: none;
+  text-decoration: none;
+  margin-top: 20px;
+}
+.tbody a{
+  color: white;
+}

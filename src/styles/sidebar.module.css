@@ -1,0 +1,26 @@
+.sidebar {
+  height: 95vh;
+  width: 10vw;
+  background-color: rgb(44, 44, 44);
+  padding: 0px 5px;
+}
+.sidebar ul{
+  margin: 0;
+  padding: 0;
+}
+.sidebar li {
+  list-style: none;
+}
+.sidebar li a {
+  padding: 5px 20px;
+  text-decoration: none;
+  color: white;
+  font-weight: 400;
+  font-size: 16px;
+  display: block;
+}
+.active{
+  background-color: black
+  ;  
+  border-radius: 10px;
+}

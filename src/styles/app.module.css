@@ -1,0 +1,66 @@
+.App {
+  display: flex;
+  gap: 20px;
+}
+
+.contentsBar {
+  display: flex;
+  align-items: left;
+  justify-content: flex-start;
+  flex-direction: column;
+  width: 10%;
+  gap: 10px;
+}
+.contentsBar button {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  background-color: #383838;
+  cursor: pointer;
+  box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
+}
+.contentsBar > p {
+  text-align: left;
+  color: white;
+}
+.contentsBar input,
+.contentsBar select {
+  padding: 10px;
+  border: none;
+  color: white;
+  border-radius: 10px;
+  background-color: rgb(31, 31, 31);
+  font-size: 16px;
+}
+.palette {
+  width: 150px;
+  background-color: transparent;
+  padding: 10px;
+  background-color: rgb(44, 44, 44);
+  height: 100%;
+}
+
+.palettenode {
+  padding: 5px;
+  border-radius: 10px;
+  text-align: center;
+  color: white;
+  background-color: rgb(56, 56, 187);
+  cursor: pointer;
+  user-select: none;
+}
+
+.canvas {
+  flex-grow: 1;
+  background-color: transparent;
+}
+.diagram {
+  width: 800px;
+  height: 800px; /* Adjust based on your needs */
+  background-color: transparent;
+  border: 2px dotted black;
+  border-radius: 20px;
+}

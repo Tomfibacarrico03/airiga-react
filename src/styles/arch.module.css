@@ -1,0 +1,83 @@
+.splitWindow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+}
+.flexRow {
+  display: flex;
+  gap: 20px;
+}
+.form {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  width: 30%;
+}
+.form input,
+.form select {
+  padding: 10px;
+  border: none;
+  color: white;
+  border-radius: 10px;
+  background-color: rgb(31, 31, 31);
+  font-size: 16px;
+}
+.form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.form label {
+  color: white;
+  font-weight: 400;
+  font-size: 20px;
+}
+.form button {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none;
+  background-color: #1b1b1b;
+  color: rgb(255, 255, 255);
+  box-shadow: none;
+}
+.form button:hover {
+  box-shadow: #383838 0px 0px 20px;
+  cursor: pointer;
+}
+.form .deleteButton {
+  background-color: red;
+  margin-left: 10px;
+}
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 70%;
+  /* Rest of your styles */
+}
+
+.option {
+  text-align: center;
+  display: flex; /* Make the option a flex container */
+  align-items: center; /* Center the content vertically */
+  justify-content: center; /* Center the content horizontally */
+  text-decoration: none;
+  font-size: 30px;
+  font-weight: 600;
+  color: white;
+  border: 2px dotted gray;
+  border-radius: 10px;
+  padding: 40px;
+  cursor: pointer;
+  flex: 0 0 auto; /* Don't grow or shrink */
+  min-height: 200px; /* Set a minimum height that's large enough for your content */
+  width: calc(50% - 20px); /* Adjust the width to account for the gap */
+  box-sizing: border-box; /* Include padding and border in the element's total width */
+}
