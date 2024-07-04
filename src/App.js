@@ -13,23 +13,17 @@ import ProtectedRoute2 from "./utils/ProtectedRoute2";
 import Canvas from "./pages/Application";
 import Application from "./pages/Application";
 import { ReloadProvider } from "./context/ReloadContext";
+import XMLConfigurator from "./pages/XMLConfigurator";
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <NavBar />
+        
         <div style={{ display: "flex" }}>
           <ReloadProvider>
-            <Sidebar />
 
-            <div
-              style={{
-                maxHeight: "95vh",
-                width: "90vw",
-                backgroundColor: "rgb(37, 37, 37)",
-                padding: "20px",
-              }}
-            >
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route
@@ -64,6 +58,14 @@ function App() {
                     </ProtectedRoute2>
                   }
                 />
+                   <Route
+                  path="/Configurator/:id"
+                  element={
+                    <ProtectedRoute2>
+                      <XMLConfigurator />
+                    </ProtectedRoute2>
+                  }
+                />
                 <Route
                   path="/Architecture/:id"
                   element={
@@ -81,7 +83,6 @@ function App() {
                   }
                 />
               </Routes>
-            </div>
           </ReloadProvider>
         </div>
       </AuthProvider>

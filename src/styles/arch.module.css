@@ -81,3 +81,48 @@
   width: calc(50% - 20px); /* Adjust the width to account for the gap */
   box-sizing: border-box; /* Include padding and border in the element's total width */
 }
+.container {
+  width: 100vw;
+  height: 90vh;
+}
+
+.loader {
+  font-size: 13px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.error {
+  color: red;
+  font-size: 18px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.jsonModule {
+  padding: 10px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+.jsonModule h2{
+  font-size: 13px;
+  text-decoration: underline;
+}
+.draggableBox {
+  background-color: #fff;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.nestedObject {
+  margin-left: 20px;
+}
+
+.arrayObject {
+  margin-left: 20px;
+}
+
+.primitiveValue {
+  margin: 5px 0;
+}

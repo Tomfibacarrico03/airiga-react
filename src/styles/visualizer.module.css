@@ -1,0 +1,25 @@
+/* Visualizer.module.css */
+
+.visualizer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.module {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin: 10px;
+    background-color: #f9f9f9;
+    width: 300px;
+    cursor: move;
+}
+
+.field {
+    margin-bottom: 10px;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 5px;
+}

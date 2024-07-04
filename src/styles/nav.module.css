@@ -1,22 +1,28 @@
-.navbar {
-  height: 5vh;
-  background-color: rgb(44, 44, 44);
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');.navbar {
+  height: 10vh;
+  background-color: rgb(255, 255, 255);
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: relative;
-  padding: 0px 20px;
+  width: 80%;
+  position: relative;
+  left: 50%;
+  transform: translate(-50%);
 }
+
 .navbar li {
   list-style: none;
 }
+
 .navbar li a img {
-  width: 100px;
+  width: 150px;
   height: auto;
   background-color: aliceblue;
-  border-radius: 5px;
+  border-radius: 6px;
   margin-top: 5px;
 }
+
 /* Add to your nav.module.css */
 .userInfo {
   position: relative;
@@ -29,7 +35,7 @@
   padding: 8px;
   border: none;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 .dropdownContent {

@@ -16,9 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState({});
 
   const createUser = (email, password) => {
-    
     return createUserWithEmailAndPassword(auth, email, password);
-
   };
 
   const signIn = (email, password) => {
@@ -28,26 +26,29 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     return signOut(auth);
   };
+
   const gitHubLogin = async () => {
     const provider = new GithubAuthProvider();
     try {
-      const result = await signInWithPopup(provider);
+      const result = await signInWithPopup(auth, provider);
+      setUser(result.user);
       console.log(result.user);
     } catch (error) {
       console.error(error);
     }
   };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         const { uid } = currentUser;
         const userRef = doc(collection(db, "users"), uid);
-        const unsubscribe = onSnapshot(userRef, (doc) => {
+        const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
           const data = doc.data();
           setUser((prevState) => ({ ...prevState, ...data }));
         });
-        return () => unsubscribe();
+        return () => unsubscribeSnapshot();
       }
     });
     return () => {
