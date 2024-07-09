@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');.navbar {
   height: 10vh;
-  background-color: rgb(255, 255, 255);
+  background-color: rgba(255, 255, 255, 0);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9,6 +9,8 @@
   position: relative;
   left: 50%;
   transform: translate(-50%);
+  position: absolute;
+  z-index: 1;
 }
 
 .navbar li {

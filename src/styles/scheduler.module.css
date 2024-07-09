@@ -1,0 +1,94 @@
+/* scheduler.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+.scheduler {
+  width: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scheduler .header {
+  width: 100%;
+  text-align: left;
+  padding-top: 10vh;
+  color: white;
+  font-family: "Open Sans", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.scheduler2 {
+  width: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scheduler2 .header2 {
+  width: 100%;
+  text-align: left;
+  color: white;
+  font-family: "Open Sans", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.partitions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 80%;
+  gap: 20px;
+}
+
+.partition {
+  border-radius: 6px;
+  padding: 20px;
+  color: white;
+  background-color: #333333;
+}
+
+.partition h3 {
+  margin: 0 0 10px 0;
+}
+.schedulingCompo{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.partitionsWindow {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 80%;
+  gap: 1px;
+  height: 50px;
+  position: relative;
+  border: 2px solid #333333;
+  border-radius: 6px;
+}
+
+.WindowPartition {
+  position: 'absolute';
+  border-radius: 6px;
+  color: white;
+  background-color: #333333;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.WindowPartition > div {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.WindowPartition h3 {
+  margin: 0;
+}

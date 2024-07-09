@@ -1,25 +1,66 @@
-/* Visualizer.module.css */
-
-.visualizer {
+.nodedetailscard {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 300px;
+    padding: 10px;
+    background:#131313;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    color: white;
+  }
+  
+  .nodedetailscard button {
+    margin-bottom: 10px;
+    background-color: #000000;
+    color:white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+  }
+  
+  .nodedetailscard form {
     display: flex;
     flex-direction: column;
-    align-items: center;
-}
-
-.module {
-    border: 1px solid #ccc;
-    padding: 10px;
-    margin: 10px;
-    background-color: #f9f9f9;
-    width: 300px;
-    cursor: move;
-}
-
-.field {
+  }
+  
+  .nodedetailscard form div {
     margin-bottom: 10px;
-}
-
-.field label {
-    display: block;
+  }
+  
+  .nodedetailscard form label {
     margin-bottom: 5px;
-}
+  }
+  
+  .nodedetailscard form input {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+  }
+  .scheduler{
+    height: 30vh;
+    width: 100%;
+    background-color: #131313;
+    position: fixed;
+    bottom: 0;
+    color: white;
+  }
+  .tabs{
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1;
+  }
+  .tabs button{
+    background-color: #131313;
+    padding: 15px;
+    margin-left: 20px;
+    border: none;
+    color: white;
+    border-radius: 10px;
+  }
+  .tabs button:hover{
+    background-color: #333333;
+    cursor: pointer;
+  }
