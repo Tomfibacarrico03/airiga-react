@@ -3,7 +3,7 @@ import ReactFlow, { Background, Controls, addEdge, useNodesState, useEdgesState 
 import 'reactflow/dist/style.css';
 import { useParams } from 'react-router-dom';
 import { db } from '../firebase'; // Make sure to correctly import your firebase config
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import styles from '../styles/visualizer.module.css'; // Import the CSS module
 import dagre from 'dagre';
 import Scheduler from '../components/Scheduler';
@@ -111,17 +111,21 @@ const NodeDetailsCard = ({ nodeData, onClose, onSave }) => {
 
   return (
     <div className={styles.nodedetailscard}>
-      <button onClick={onClose} className={styles.closebutton}>Close</button>
-      <h2>{nodeData.label}</h2>
-      <form onSubmit={handleSubmit} className={styles.detailsform}>
-        {filteredDetails.map(([key, value]) => (
-          <div key={key} className={styles.formgroup}>
-            <label>{key}</label>
-            <input type="text" name={key} value={value} onChange={handleInputChange} />
-          </div>
-        ))}
-        <button type="submit">Save</button>
-      </form>
+      <div className={styles.dataHeader}>
+        <h2>{nodeData.label}</h2>
+        <button onClick={onClose} className={styles.closebutton}>Close</button>
+      </div>
+      {nodeData.details.WindowIdentifier ? <p>Please use the scheduler</p> :
+        <form onSubmit={handleSubmit} className={styles.detailsform}>
+          {filteredDetails.map(([key, value]) => (
+            <div key={key} className={styles.formgroup}>
+              <label>{key}</label>
+              <input type={key.includes('Seconds') ? 'number' : 'text'} name={key} value={value} onChange={handleInputChange} />
+            </div>
+          ))}
+          <button type="submit">Save</button>
+        </form>
+      }
     </div>
   );
 };
@@ -148,7 +152,8 @@ const XMLConfigurator = () => {
     setSelectedNode(node);
   };
 
-  const handleSave = (updatedDetails) => {
+  const handleSave = async (updatedDetails) => {
+    // Update the nodes state with the new details
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === selectedNode.id) {
@@ -163,34 +168,58 @@ const XMLConfigurator = () => {
         return node;
       })
     );
-    setSelectedNode(null);
-  };
 
-  useMemo(() => {
-    const fetchArchitectureData = async () => {
-      const docRef = doc(db, 'Configurations', id);
-      try {
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const jsonData = docSnap.data();
-          setData(jsonData);
-          const { nodes, edges } = parseJsonToNodesAndEdges(jsonData);
-          const layoutedElements = getLayoutedElements(nodes, edges);
-          setNodes(layoutedElements.nodes);
-          setEdges(layoutedElements.edges);
-          const { schedule, majorFrameSeconds } = extractSchedule(jsonData); // Extract schedule and majorFrameSeconds from JSON data
-          setSchedule(schedule);
-          setMajorFrameSeconds(majorFrameSeconds);
-        } else {
-          setError('No such document!');
+    // Update the Firebase document with the new details
+    const updatedData = { ...data };
+    const label = selectedNode.data.label;
+
+    // Update the nested structure appropriately
+    const updateNestedObject = (obj, label, details) => {
+      for (const key in obj) {
+        if (key === label) {
+          obj[key] = { ...obj[key], ...details };
+        } else if (typeof obj[key] === 'object') {
+          updateNestedObject(obj[key], label, details);
         }
-      } catch (e) {
-        setError('Error fetching document: ' + e.message);
-      } finally {
-        setLoading(false);
       }
     };
 
+    updateNestedObject(updatedData, label, updatedDetails);
+
+    try {
+      await setDoc(doc(db, 'Configurations', id), updatedData);
+      setData(updatedData); // Update the local state with the new data
+      setSelectedNode(null);
+    } catch (error) {
+      console.error("Error updating document: ", error);
+    }
+  };
+
+  const fetchArchitectureData = async () => {
+    const docRef = doc(db, 'Configurations', id);
+    try {
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const jsonData = docSnap.data();
+        setData(jsonData);
+        const { nodes, edges } = parseJsonToNodesAndEdges(jsonData);
+        const layoutedElements = getLayoutedElements(nodes, edges);
+        setNodes(layoutedElements.nodes);
+        setEdges(layoutedElements.edges);
+        const { schedule, majorFrameSeconds } = extractSchedule(jsonData); // Extract schedule and majorFrameSeconds from JSON data
+        setSchedule(schedule);
+        setMajorFrameSeconds(majorFrameSeconds);
+      } else {
+        setError('No such document!');
+      }
+    } catch (e) {
+      setError('Error fetching document: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useMemo(() => {
     if (id) {
       fetchArchitectureData();
     } else {
@@ -203,6 +232,12 @@ const XMLConfigurator = () => {
     console.log(data);
   }, [data]);
 
+  useEffect(() => {
+    if (id) {
+      fetchArchitectureData();
+    }
+  }, [activeTab]);
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -212,7 +247,7 @@ const XMLConfigurator = () => {
   }
 
   return (
-    <div style={{ backgroundColor: '#1a1a1a', width: '100vw', height: '100vh' }}>
+    <div style={{ backgroundColor: '#1a1a1a', width: '100vw', minHeight: '100vh' }}>
       <div className={styles.tabs}>
         <button onClick={() => setActiveTab('visualizer')}>Visualizer</button>
         <button onClick={() => setActiveTab('scheduler')}>Scheduler</button>
@@ -231,7 +266,7 @@ const XMLConfigurator = () => {
           <Controls />
         </ReactFlow>
       )}
-      {activeTab === 'scheduler' ?<Scheduler data={data}/>:null}
+      {activeTab === 'scheduler' && data ? <Scheduler data={data} documentId={id} /> : null}
       {selectedNode && (
         <NodeDetailsCard nodeData={selectedNode.data} onClose={() => setSelectedNode(null)} onSave={handleSave} />
       )}

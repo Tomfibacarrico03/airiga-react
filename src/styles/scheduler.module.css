@@ -1,5 +1,14 @@
-/* scheduler.module.css */
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+.container {
+  width: 100%;
+  gap: 20px;
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 7rem;
+}
 
 .scheduler {
   width: 80%;
@@ -16,8 +25,32 @@
   font-family: "Open Sans", sans-serif;
   font-weight: 500;
   font-style: normal;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
+.saveButton{
+  background-color: #333333;
+  color: white;
+  padding: 10px;
+  font-family: "Open Sans", sans-serif;
 
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+.coreTitle{
+  position: absolute;
+  color:rgb(143, 143, 143);
+  left: 6%;
+}
+.coreDe{
+  position: absolute;
+  color:rgb(143, 143, 143);
+  right: 7%;
+  cursor: pointer;
+}
 .scheduler2 {
   width: 80%;
   display: flex;
@@ -39,7 +72,8 @@
   justify-content: flex-start;
   align-items: center;
   width: 80%;
-  gap: 20px;
+  gap: 40px;
+  flex-wrap: wrap;
 }
 
 .partition {
@@ -47,17 +81,63 @@
   padding: 20px;
   color: white;
   background-color: #333333;
-}
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 20%;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  font-family: "Open Sans", sans-serif;
 
+}
+.partition > div{
+  padding: 5px;
+  background-color: rgba(240, 248, 255, 0.322);
+  border-radius: 6px;
+}
+.partition button{
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background-color: #333333;
+  color: white;
+}
+.fieldPart{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.fieldPart input{
+  background-color: rgba(240, 248, 255, 0.432);
+  border: none;
+  color: black;
+  border-radius: 6px;
+  padding: 5px;
+}
+.fieldPartCore{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  gap: 5px;
+}
+.fieldPartCore select{
+  background-color: rgba(240, 248, 255, 0.432);
+  border: none;
+  color: black;
+  border-radius: 6px;
+}
 .partition h3 {
   margin: 0 0 10px 0;
 }
-.schedulingCompo{
+
+.schedulingCompo {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
 }
+
 .partitionsWindow {
   display: flex;
   justify-content: flex-start;
@@ -71,7 +151,7 @@
 }
 
 .WindowPartition {
-  position: 'absolute';
+  position: absolute;
   border-radius: 6px;
   color: white;
   background-color: #333333;
@@ -91,4 +171,23 @@
 
 .WindowPartition h3 {
   margin: 0;
+}
+
+.timeLabels {
+  width: 100%;
+  display: flex;
+  position: relative;
+}
+
+.endTime {
+  right: 0;
+  position: absolute;
+  width: fit-content;
+  color: rgb(143, 143, 143);
+}
+
+.startTime {
+  position: absolute;
+  width: fit-content;
+  color: rgb(143, 143, 143);
 }
