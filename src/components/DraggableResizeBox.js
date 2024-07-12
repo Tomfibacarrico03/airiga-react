@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { ResizableBox } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 
@@ -6,25 +6,27 @@ import 'react-resizable/css/styles.css';
 const DraggableResizableBox = ({ item, children, width, height, minConstraints, maxConstraints, onResizeStop, left, handleFieldChange, windowSchedule, majorFrameSeconds, velocityFactor = 0.5 }) => {
     const ref = useRef(null);
     const [initialX, setInitialX] = useState(null);
+    const [initialStartSeconds, setInitialStartSeconds] = useState(null);
 
     const handleDragStart = (e) => {
         setInitialX(e.clientX);
+        setInitialStartSeconds(parseFloat(windowSchedule.WindowStartSeconds));
     };
 
     const handleDrag = (e) => {
-        if (initialX !== null) {
-            const deltaX = (e.clientX - initialX) * velocityFactor; // Apply the velocity factor here
-            const newStartSeconds = parseFloat(windowSchedule.WindowStartSeconds) + (deltaX / width) * majorFrameSeconds;
+        if (initialX !== null && initialStartSeconds !== null) {
+            const deltaX = (e.clientX - initialX) * velocityFactor;
+            const newStartSeconds = initialStartSeconds + (deltaX / width) * majorFrameSeconds;
 
             if (newStartSeconds >= 0 && newStartSeconds <= majorFrameSeconds - parseFloat(windowSchedule.WindowDurationSeconds)) {
                 handleFieldChange('WindowStartSeconds', newStartSeconds.toFixed(4), item);
-                setInitialX(e.clientX);
             }
         }
     };
 
     const handleDragEnd = () => {
         setInitialX(null);
+        setInitialStartSeconds(null);
     };
 
     return (
@@ -50,6 +52,5 @@ const DraggableResizableBox = ({ item, children, width, height, minConstraints, 
         </div>
     );
 };
-// Main scheduler component
 
 export default DraggableResizableBox;

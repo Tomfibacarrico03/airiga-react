@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ReactFlow, { Background, Controls, addEdge, useNodesState, useEdgesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useParams } from 'react-router-dom';
-import { db } from '../firebase'; // Make sure to correctly import your firebase config
+import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import styles from '../styles/visualizer.module.css'; // Import the CSS module
+import styles from '../styles/visualizer.module.css';
 import dagre from 'dagre';
 import Scheduler from '../components/Scheduler';
 import { extractSchedule } from '../utils/extractSchedule';
 import options from '../lib/options';
+import logo from "../images/airLogo-removebg-preview.png";
 
 const nodeWidth = 130;
 const nodeHeight = 36;
@@ -107,13 +108,10 @@ const NodeDetailsCard = ({ nodeData, onClose, onSave }) => {
     const { value, checked } = e.target;
     setDetails((prevDetails) => {
       const currentValues = prevDetails[key] ? prevDetails[key].split(';').map(v => v.trim()) : [];
-      
+
       if (checked) {
-        console.log(1);
         currentValues.push(value);
       } else {
-        console.log(0);
-
         // If there's only one value left, prevent unchecking
         if (currentValues.length > 1) {
           const index = currentValues.indexOf(value);
@@ -127,20 +125,15 @@ const NodeDetailsCard = ({ nodeData, onClose, onSave }) => {
           return prevDetails;
         }
       }
-  
+
       const updatedValues = currentValues.join('; ');
-  
-      // Log the number of boxes selected
-      console.log(`Number of boxes selected for ${key}: ${currentValues.length}`);
-  
+
       return {
         ...prevDetails,
         [key]: updatedValues,
       };
     });
   };
-  
-  
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -216,6 +209,83 @@ const NodeDetailsCard = ({ nodeData, onClose, onSave }) => {
   );
 };
 
+const jsonToXml = (json) => {
+  const { ARINC_653_Module } = json;
+  const { ModuleName, Partition, AIR_Configuration, Module_Schedule } = ARINC_653_Module;
+
+  let xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n`;
+  xml += `<ARINC_653_Module xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ModuleName="${ModuleName}">\n`;
+
+  if (Partition && Partition.length > 0) {
+    Partition.forEach(partition => {
+      xml += `  <Partition PartitionIdentifier="${partition.PartitionIdentifier}" PartitionName="${partition.PartitionName}" Criticality="${partition.Criticality}" EntryPoint="${partition.EntryPoint}" SystemPartition="${partition.SystemPartition}">\n`;
+      const { PartitionConfiguration } = partition;
+      if (PartitionConfiguration) {
+        xml += `    <PartitionConfiguration Personality="${PartitionConfiguration.Personality}" Cores="${PartitionConfiguration.Cores}">\n`;
+        xml += `      <Libs>${PartitionConfiguration.Libs}</Libs>\n`;
+        xml += `      <Devices>${PartitionConfiguration.Devices}</Devices>\n`;
+        xml += `      <Cache>${PartitionConfiguration.Cache}</Cache>\n`;
+        xml += `      <Memory Size="${PartitionConfiguration.Memory.Size}" />\n`;
+        xml += `      <Permissions>${PartitionConfiguration.Permissions}</Permissions>\n`;
+        xml += `    </PartitionConfiguration>\n`;
+      }
+      xml += `  </Partition>\n`;
+    });
+  }
+
+  if (Module_Schedule) {
+    xml += `  <Module_Schedule ScheduleIdentifier="${Module_Schedule.ScheduleIdentifier}" ScheduleName="${Module_Schedule.ScheduleName}" InitialModuleSchedule="${Module_Schedule.InitialModuleSchedule}" MajorFrameSeconds="${Module_Schedule.MajorFrameSeconds}">\n`;
+
+    if (Module_Schedule.Partition_Schedule && Module_Schedule.Partition_Schedule.length > 0) {
+      Module_Schedule.Partition_Schedule.forEach(schedule => {
+        xml += `    <Partition_Schedule PartitionIdentifier="${schedule.PartitionIdentifier}" PartitionName="${schedule.PartitionName}" PeriodDurationSeconds="${schedule.PeriodDurationSeconds}" PeriodSeconds="${schedule.PeriodSeconds}">\n`;
+
+        if (Array.isArray(schedule.Window_Schedule)) {
+          schedule.Window_Schedule.forEach(window => {
+            xml += `      <Window_Schedule WindowIdentifier="${window.WindowIdentifier}" PartitionPeriodStart="${window.PartitionPeriodStart}" WindowDurationSeconds="${window.WindowDurationSeconds}" WindowStartSeconds="${window.WindowStartSeconds}" />\n`;
+          });
+        } else if (schedule.Window_Schedule) {
+          const window = schedule.Window_Schedule;
+          xml += `      <Window_Schedule WindowIdentifier="${window.WindowIdentifier}" PartitionPeriodStart="${window.PartitionPeriodStart}" WindowDurationSeconds="${window.WindowDurationSeconds}" WindowStartSeconds="${window.WindowStartSeconds}" />\n`;
+        }
+
+        if (Array.isArray(schedule.WindowConfiguration)) {
+          schedule.WindowConfiguration.forEach(config => {
+            xml += `      <WindowConfiguration WindowIdentifier="${config.WindowIdentifier}" Cores="${config.Cores}" />\n`;
+          });
+        } else if (schedule.WindowConfiguration) {
+          const config = schedule.WindowConfiguration;
+          xml += `      <WindowConfiguration WindowIdentifier="${config.WindowIdentifier}" Cores="${config.Cores}" />\n`;
+        }
+
+        xml += `    </Partition_Schedule>\n`;
+      });
+    }
+    xml += `  </Module_Schedule>\n`;
+  }
+
+  if (AIR_Configuration) {
+    xml += `  <AIR_Configuration TicksPerSecond="${AIR_Configuration.TicksPerSecond}" RequiredCores="${AIR_Configuration.RequiredCores}" />\n`;
+  }
+
+  xml += `</ARINC_653_Module>\n`;
+
+  return xml;
+};
+
+
+const downloadXml = (data) => {
+  const xmlString = jsonToXml(data);
+  const blob = new Blob([xmlString], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'configuration.xml';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
 const XMLConfigurator = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
@@ -226,7 +296,7 @@ const XMLConfigurator = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [activeTab, setActiveTab] = useState('visualizer'); // Add state for active tab
+  const [activeTab, setActiveTab] = useState('visualizer');
 
   const onNodeDragStop = (event, node) => {
     setNodes((nds) => nds.map((n) => (n.id === node.id ? { ...n, position: node.position } : n)));
@@ -239,7 +309,6 @@ const XMLConfigurator = () => {
   };
 
   const handleSave = async (updatedDetails) => {
-    // Update the nodes state with the new details
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === selectedNode.id) {
@@ -255,11 +324,9 @@ const XMLConfigurator = () => {
       })
     );
 
-    // Update the Firebase document with the new details
     const updatedData = { ...data };
     const label = selectedNode.data.label;
 
-    // Update the nested structure appropriately
     const updateNestedObject = (obj, label, details) => {
       for (const key in obj) {
         if (key === label) {
@@ -274,7 +341,7 @@ const XMLConfigurator = () => {
 
     try {
       await setDoc(doc(db, 'Configurations', id), updatedData);
-      setData(updatedData); // Update the local state with the new data
+      setData(updatedData);
       setSelectedNode(null);
     } catch (error) {
       console.error("Error updating document: ", error);
@@ -292,7 +359,7 @@ const XMLConfigurator = () => {
         const layoutedElements = getLayoutedElements(nodes, edges);
         setNodes(layoutedElements.nodes);
         setEdges(layoutedElements.edges);
-        const { schedule, majorFrameSeconds } = extractSchedule(jsonData); // Extract schedule and majorFrameSeconds from JSON data
+        const { schedule, majorFrameSeconds } = extractSchedule(jsonData);
         setSchedule(schedule);
         setMajorFrameSeconds(majorFrameSeconds);
       } else {
@@ -316,16 +383,27 @@ const XMLConfigurator = () => {
 
   useEffect(() => {
     console.log(data);
+    if (data!= null) {
+      
+      const { nodes, edges } = parseJsonToNodesAndEdges(data);
+      const layoutedElements = getLayoutedElements(nodes, edges);
+      setNodes(layoutedElements.nodes);
+      setEdges(layoutedElements.edges);
+    }
   }, [data]);
 
   useEffect(() => {
     if (id) {
       fetchArchitectureData();
+      
     }
   }, [activeTab]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div style={{position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)"}}>
+                    <img src={logo} alt="Logo" key={logo} />
+
+    </div>;
   }
 
   if (error) {
@@ -337,6 +415,7 @@ const XMLConfigurator = () => {
       <div className={styles.tabs}>
         <button onClick={() => setActiveTab('visualizer')}>Visualizer</button>
         <button onClick={() => setActiveTab('scheduler')}>Scheduler</button>
+        <button onClick={() => downloadXml(data)} className={styles.downloadButton}>Download XML</button>
       </div>
       {activeTab === 'visualizer' && (
         <ReactFlow

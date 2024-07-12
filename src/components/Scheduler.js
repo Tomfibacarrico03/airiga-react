@@ -82,6 +82,79 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
         };
     }, [updatedData]);
 
+    const normalizeWindowConfiguration = (config) => {
+        return Array.isArray(config) ? config : [config];
+    };
+
+    const findClosestBlock = (startSeconds, partitions, currentPartitionId, currentWindowId, currentCore) => {
+        let closestBlock = null;
+        let minDistance = Infinity;
+
+        partitions.forEach(partition => {
+            const windowSchedules = Array.isArray(partition.Window_Schedule)
+                ? partition.Window_Schedule
+                : [partition.Window_Schedule];
+
+            windowSchedules.forEach(ws => {
+                if (ws.WindowIdentifier === currentWindowId && partition.PartitionIdentifier === currentPartitionId) return; // Skip current window
+                var core = 0;
+                if (partition.WindowConfiguration) {
+
+
+                    const windowConfig = normalizeWindowConfiguration(partition.WindowConfiguration)
+                    .find(config => config.WindowIdentifier === ws.WindowIdentifier);
+
+                    core = windowConfig ? parseInt(windowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
+                }
+
+
+                if (core !== currentCore) return; // Skip different cores
+
+                const blockStart = parseFloat(ws.WindowStartSeconds);
+                const blockEnd = blockStart + parseFloat(ws.WindowDurationSeconds);
+                const distance = Math.min(Math.abs(startSeconds - blockStart), Math.abs(startSeconds - blockEnd));
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestBlock = {
+                        partitionName: partition.PartitionName,
+                        blockStart,
+                        blockEnd,
+                        duration: parseFloat(ws.WindowDurationSeconds),
+                        windowSchedule: ws,
+                        partitionIdentifier: partition.PartitionIdentifier
+                    };
+                }
+            });
+        });
+
+        return closestBlock;
+    };
+
+    const applyThreshold = (newWindowStartSeconds, windowDurationSeconds, currentCore, item) => {
+        const closestBlock = findClosestBlock(newWindowStartSeconds, updatedData, item.PartitionIdentifier, item.Window_Schedule.WindowIdentifier, currentCore);
+        const threshold = 0.03 * majorFrameSeconds; // Adjust this threshold as needed
+
+        if (closestBlock) {
+            const distanceToStart = Math.abs(newWindowStartSeconds - closestBlock.blockStart);
+            const distanceToEnd = Math.abs(newWindowStartSeconds - closestBlock.blockEnd);
+            const distanceToEndSnap = Math.abs(newWindowStartSeconds + windowDurationSeconds - closestBlock.blockStart);
+
+            if (distanceToStart < threshold) {
+                if (closestBlock.blockStart - windowDurationSeconds > 0) {
+                    return (closestBlock.blockStart - windowDurationSeconds).toFixed(4);
+                }
+            } else if (distanceToEnd < threshold) {
+                return closestBlock.blockEnd.toFixed(4);
+            } else if (distanceToEndSnap < threshold) {
+                if (closestBlock.blockStart - windowDurationSeconds > 0) {
+                    return (closestBlock.blockStart - windowDurationSeconds).toFixed(4);
+                }
+            }
+        }
+        return newWindowStartSeconds.toFixed(4);
+    };
+
     // Handle resize stop event for resizable box
     const handleResizeStop = (event, { size }, item) => {
         const newDuration = (size.width / windowWidth.current) * majorFrameSeconds;
@@ -94,7 +167,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                             : ws
                     )
                     : [{ ...partition.Window_Schedule, WindowDurationSeconds: newDuration.toFixed(4) }];
-                
+
                 return {
                     ...partition,
                     Window_Schedule: updatedWindowSchedules,
@@ -103,7 +176,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
             }
             return partition;
         });
-    
+
         let cumulativeStart = 0;
         const reorderedData = newUpdatedData.map(partition => {
             const updatedPartition = {
@@ -122,29 +195,46 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
             cumulativeStart += parseFloat(partition.PeriodDurationSeconds);
             return updatedPartition;
         });
-    
+
         setUpdatedData(reorderedData);
         setIsModified(true); // Mark as modified
     };
 
     // Handle change in window schedule fields
-    const handleFieldChange = (field, newValue, item) => {
+    const handleFieldChange = (field, newValue, item, applyThresholdLogic = false) => {
+        console.log(item);
         const windowIdentifier = item.Window_Schedule.WindowIdentifier;
-    
+        console.log("item");
+
         let newFormattedValue = newValue;
         if (!isNaN(newValue) && field !== 'WindowIdentifier') {
             newFormattedValue = parseFloat(newValue).toFixed(4);
         }
-    
+
         if (field === "WindowStartSeconds") {
-            const newWindowStartSeconds = parseFloat(newValue);
+            const newWindowStartSeconds = parseFloat(newFormattedValue);
             const windowDurationSeconds = parseFloat(item.Window_Schedule.WindowDurationSeconds);
             if (newWindowStartSeconds + windowDurationSeconds > majorFrameSeconds) {
                 alert("The sum of Window Start Seconds and Window Duration Seconds cannot exceed Major Frame Seconds.");
                 return;
             }
+
+            const currentPartition = updatedData.find(partition => partition.PartitionIdentifier === item.PartitionIdentifier);
+            var currentCore = 0;
+            if (currentPartition.WindowConfiguration) {
+
+
+                const currentWindowConfig = normalizeWindowConfiguration(currentPartition.WindowConfiguration)
+                    .find(config => config.WindowIdentifier === windowIdentifier);
+
+                currentCore = currentWindowConfig ? parseInt(currentWindowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
+            }
+
+            if (applyThresholdLogic) {
+                newFormattedValue = applyThreshold(newWindowStartSeconds, windowDurationSeconds, currentCore, item);
+            }
         }
-    
+
         if (field === "WindowDurationSeconds") {
             const newWindowDurationSeconds = parseFloat(newValue);
             const windowStartSeconds = parseFloat(item.Window_Schedule.WindowStartSeconds);
@@ -153,7 +243,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                 return;
             }
         }
-    
+
         const newUpdatedData = updatedData.map(partition =>
             partition.PartitionIdentifier === item.PartitionIdentifier
                 ? {
@@ -168,11 +258,10 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                 }
                 : partition
         );
-    
+
         setUpdatedData(newUpdatedData);
         setIsModified(true); // Mark as modified
     };
-    
 
     // Handle core change in window schedule
     const handleCoreChange = (e, item) => {
@@ -183,13 +272,12 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
             partition.PartitionIdentifier === item.PartitionIdentifier
                 ? {
                     ...partition,
-                    WindowConfiguration: Array.isArray(partition.WindowConfiguration)
-                        ? partition.WindowConfiguration.map(config =>
+                    WindowConfiguration: normalizeWindowConfiguration(partition.WindowConfiguration)
+                        .map(config =>
                             config.WindowIdentifier === windowIdentifier
                                 ? { ...config, Cores: newCore }
                                 : config
                         )
-                        : [{ ...partition.WindowConfiguration, Cores: newCore }]
                 }
                 : partition
         );
@@ -238,9 +326,8 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                         }
                     ];
 
-                const isWindowConfigurationArray = Array.isArray(partition.WindowConfiguration);
-                const newWindowConfigurations = isWindowConfigurationArray
-                    ? partition.WindowConfiguration.flatMap((config) => {
+                const newWindowConfigurations = normalizeWindowConfiguration(partition.WindowConfiguration)
+                    .flatMap(config => {
                         if (config.WindowIdentifier === windowScheduleId) {
                             return [
                                 config,
@@ -251,14 +338,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                             ];
                         }
                         return config;
-                    })
-                    : [
-                        partition.WindowConfiguration,
-                        {
-                            ...partition.WindowConfiguration,
-                            WindowIdentifier: "2"
-                        }
-                    ];
+                    });
 
                 return {
                     ...partition,
@@ -288,6 +368,28 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
     };
 
     const deleteCore = (coreIndex) => {
+        // Calculate the total duration of all windows assigned to the core
+        let totalDuration = 0;
+        updatedData.forEach(partition => {
+            const windowSchedules = Array.isArray(partition.Window_Schedule)
+                ? partition.Window_Schedule
+                : [partition.Window_Schedule];
+
+            windowSchedules.forEach(ws => {
+                const windowConfig = normalizeWindowConfiguration(partition.WindowConfiguration)
+                    .find(config => config && config.WindowIdentifier === ws.WindowIdentifier);
+                const core = windowConfig ? parseInt(windowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
+                if (core === coreIndex) {
+                    totalDuration += parseFloat(ws.WindowDurationSeconds);
+                }
+            });
+        });
+
+        if (totalDuration > 0) {
+            alert(`Cannot delete Core ${coreIndex} because it has windows assigned to it with a total duration of ${totalDuration.toFixed(4)} seconds.`);
+            return;
+        }
+
         const newCoreCount = Core - 1;
         if (newCoreCount >= 1) {
             setCore(newCoreCount);
@@ -300,6 +402,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                 }
             }));
             setIsModified(true); // Mark as modified
+            alert(`Core ${coreIndex} deleted successfully. Total number of cores is now ${newCoreCount}.`);
         }
     };
 
@@ -308,10 +411,10 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
             const corePartitions = updatedData.flatMap(partition => {
                 const windowSchedules = Array.isArray(partition.Window_Schedule) ? partition.Window_Schedule : [partition.Window_Schedule];
                 return windowSchedules.filter(ws => {
-                    const windowConfig = Array.isArray(partition.WindowConfiguration)
-                        ? partition.WindowConfiguration.find(config => config.WindowIdentifier === ws.WindowIdentifier)
-                        : partition.WindowConfiguration;
-                    return windowConfig && parseInt(windowConfig.Cores) === coreIndex;
+                    const windowConfig = normalizeWindowConfiguration(partition.WindowConfiguration)
+                        .find(config => config && config.WindowIdentifier === ws.WindowIdentifier);
+                    const core = windowConfig ? parseInt(windowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
+                    return core === coreIndex;
                 }).map(ws => ({
                     start: parseFloat(ws.WindowStartSeconds),
                     end: parseFloat(ws.WindowStartSeconds) + parseFloat(ws.WindowDurationSeconds),
@@ -352,6 +455,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
             },
         });
         setIsModified(false); // Mark as not modified after save
+        alert("Saved");
     };
 
     // Define the order of fields to display
@@ -401,10 +505,10 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                                     ? partition.Window_Schedule
                                     : [partition.Window_Schedule];
                                 return windowSchedules.map((windowSchedule, windowIndex) => {
-                                    const windowConfig = Array.isArray(partition.WindowConfiguration)
-                                        ? partition.WindowConfiguration.find(config => config.WindowIdentifier === windowSchedule.WindowIdentifier)
-                                        : partition.WindowConfiguration;
-                                    if (windowConfig && parseInt(windowConfig.Cores) === coreIndex) {
+                                    const windowConfig = normalizeWindowConfiguration(partition.WindowConfiguration)
+                                        .find(config => config && config.WindowIdentifier === windowSchedule.WindowIdentifier);
+                                    const core = windowConfig ? parseInt(windowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
+                                    if (core === coreIndex) {
                                         const startSeconds = parseFloat(windowSchedule.WindowStartSeconds);
                                         const durationSeconds = parseFloat(windowSchedule.WindowDurationSeconds);
                                         const left = (startSeconds / majorFrameSeconds) * windowWidth.current;
@@ -412,31 +516,29 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                                         const maxConstraints = getMaxConstraints(partition);
 
                                         return (
-                                            <>
-                                                <DraggableResizableBox
-                                                    key={`${partition.PartitionIdentifier}-${windowSchedule.WindowIdentifier}`}
-                                                    item={{ PartitionIdentifier: partition.PartitionIdentifier, Window_Schedule: windowSchedule }}
-                                                    width={width}
-                                                    height={50}
-                                                    minConstraints={[1, 50]}
-                                                    maxConstraints={maxConstraints}
-                                                    onResizeStop={(e, data) => handleResizeStop(e, data, { PartitionIdentifier: partition.PartitionIdentifier, Window_Schedule: windowSchedule })}
-                                                    left={left}
-                                                    handleFieldChange={handleFieldChange}
-                                                    windowSchedule={windowSchedule}
-                                                    majorFrameSeconds={majorFrameSeconds}
+                                            <DraggableResizableBox
+                                                key={`${partition.PartitionIdentifier}-${windowSchedule.WindowIdentifier}`}
+                                                item={{ PartitionIdentifier: partition.PartitionIdentifier, Window_Schedule: windowSchedule }}
+                                                width={width}
+                                                height={50}
+                                                minConstraints={[1, 50]}
+                                                maxConstraints={maxConstraints}
+                                                onResizeStop={(e, data) => handleResizeStop(e, data, { PartitionIdentifier: partition.PartitionIdentifier, Window_Schedule: windowSchedule })}
+                                                left={left}
+                                                handleFieldChange={(field, newValue, item) => handleFieldChange(field, newValue, item, true)} // Apply threshold only on drag
+                                                windowSchedule={windowSchedule}
+                                                majorFrameSeconds={majorFrameSeconds}
+                                            >
+                                                <div
+                                                    style={{
+                                                        backgroundColor: colors[partition.PartitionIdentifier],
+                                                        height: "100%",
+                                                        borderRadius: "6px"
+                                                    }}
                                                 >
-                                                    <div
-                                                        style={{
-                                                            backgroundColor: colors[partition.PartitionIdentifier],
-                                                            height: "100%",
-                                                            borderRadius: "6px"
-                                                        }}
-                                                    >
-                                                        <h3 style={{ height: "100%", margin: 0, padding: 0, color: '#fff', display: "flex", alignItems: 'center', justifyContent: "center" }}>{partition.PartitionName}</h3>
-                                                    </div>
-                                                </DraggableResizableBox>
-                                            </>
+                                                    <h3 style={{ height: "100%", margin: 0, padding: 0, color: '#fff', display: "flex", alignItems: 'center', justifyContent: "center" }}>{partition.PartitionName}</h3>
+                                                </div>
+                                            </DraggableResizableBox>
                                         );
                                     }
                                 });
@@ -451,10 +553,10 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                                     ? partition.Window_Schedule
                                     : [partition.Window_Schedule];
                                 return windowSchedules.map((windowSchedule, windowIndex) => {
-                                    const windowConfig = Array.isArray(partition.WindowConfiguration)
-                                        ? partition.WindowConfiguration.find(config => config.WindowIdentifier === windowSchedule.WindowIdentifier)
-                                        : partition.WindowConfiguration;
-                                    if (windowConfig && parseInt(windowConfig.Cores) === coreIndex) {
+                                    const windowConfig = normalizeWindowConfiguration(partition.WindowConfiguration)
+                                        .find(config => config && config.WindowIdentifier === windowSchedule.WindowIdentifier);
+                                    const core = windowConfig ? parseInt(windowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
+                                    if (core === coreIndex) {
                                         const startSeconds = parseFloat(windowSchedule.WindowStartSeconds);
                                         const durationSeconds = parseFloat(windowSchedule.WindowDurationSeconds);
                                         const left = (startSeconds / majorFrameSeconds) * windowWidth.current;
@@ -492,9 +594,9 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                         ? partition.Window_Schedule
                         : [partition.Window_Schedule];
                     return windowSchedules.map((windowSchedule, windowIndex) => {
-                        const windowConfig = Array.isArray(partition.WindowConfiguration)
-                            ? partition.WindowConfiguration.find(config => config.WindowIdentifier === windowSchedule.WindowIdentifier)
-                            : partition.WindowConfiguration;
+                        const windowConfig = normalizeWindowConfiguration(partition.WindowConfiguration)
+                            .find(config => config && config.WindowIdentifier === windowSchedule.WindowIdentifier);
+                        const core = windowConfig ? parseInt(windowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
                         const startSeconds = parseFloat(windowSchedule.WindowStartSeconds);
                         const durationSeconds = parseFloat(windowSchedule.WindowDurationSeconds);
                         const left = (startSeconds / majorFrameSeconds) * windowWidth.current;
@@ -509,7 +611,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                                     <div className={styles.fieldPartCore}>
                                         Core
                                         <select
-                                            value={windowConfig ? windowConfig.Cores : 'N/A'}
+                                            value={core}
                                             onChange={(e) => handleCoreChange(e, { PartitionIdentifier: partition.PartitionIdentifier, Window_Schedule: windowSchedule })}
                                         >
                                             {Array.from({ length: Core }, (_, i) => (
