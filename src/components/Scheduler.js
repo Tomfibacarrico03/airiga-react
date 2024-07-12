@@ -85,60 +85,75 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
     // Handle resize stop event for resizable box
     const handleResizeStop = (event, { size }, item) => {
         const newDuration = (size.width / windowWidth.current) * majorFrameSeconds;
-        const totalDuration = updatedData.reduce((sum, partition) => {
-            return sum + (partition.PartitionIdentifier === item.PartitionIdentifier ? newDuration : parseFloat(partition.Window_Schedule.WindowDurationSeconds));
-        }, 0);
-
-        if (totalDuration <= majorFrameSeconds) {
-            const newUpdatedData = updatedData.map(partition =>
-                partition.PartitionIdentifier === item.PartitionIdentifier
-                    ? {
-                        ...partition,
-                        PeriodDurationSeconds: newDuration.toFixed(4),
-                        Window_Schedule: Array.isArray(partition.Window_Schedule)
-                            ? partition.Window_Schedule.map(ws =>
-                                ws.WindowIdentifier === item.Window_Schedule.WindowIdentifier
-                                    ? { ...ws, WindowDurationSeconds: newDuration.toFixed(4) }
-                                    : ws
-                            )
-                            : [{ ...partition.Window_Schedule, WindowDurationSeconds: newDuration.toFixed(4) }]
-                    }
-                    : partition
-            );
-
-            let cumulativeStart = 0;
-            const reorderedData = newUpdatedData.map((partition) => {
-                const updatedPartition = {
+        const newUpdatedData = updatedData.map(partition => {
+            if (partition.PartitionIdentifier === item.PartitionIdentifier) {
+                const updatedWindowSchedules = Array.isArray(partition.Window_Schedule)
+                    ? partition.Window_Schedule.map(ws =>
+                        ws.WindowIdentifier === item.Window_Schedule.WindowIdentifier
+                            ? { ...ws, WindowDurationSeconds: newDuration.toFixed(4) }
+                            : ws
+                    )
+                    : [{ ...partition.Window_Schedule, WindowDurationSeconds: newDuration.toFixed(4) }];
+                
+                return {
                     ...partition,
-                    Window_Schedule: Array.isArray(partition.Window_Schedule)
-                        ? partition.Window_Schedule.map(ws => {
-                            const updatedWs = {
-                                ...ws,
-                                WindowStartSeconds: Math.max(0, Math.min(cumulativeStart.toFixed(4), majorFrameSeconds - parseFloat(updatedWs.WindowDurationSeconds)))
-                            };
-                            cumulativeStart += parseFloat(updatedWs.WindowDurationSeconds);
-                            return updatedWs;
-                        })
-                        : [{ ...partition.Window_Schedule, WindowStartSeconds: Math.max(0, Math.min(cumulativeStart.toFixed(4), majorFrameSeconds - parseFloat(updatedPartition.PeriodDurationSeconds))) }]
+                    Window_Schedule: updatedWindowSchedules,
+                    PeriodDurationSeconds: updatedWindowSchedules.reduce((sum, ws) => sum + parseFloat(ws.WindowDurationSeconds), 0).toFixed(4)
                 };
-                cumulativeStart += parseFloat(updatedPartition.PeriodDurationSeconds);
-                return updatedPartition;
-            });
-
-            setUpdatedData(reorderedData);
-            setIsModified(true); // Mark as modified
-        }
+            }
+            return partition;
+        });
+    
+        let cumulativeStart = 0;
+        const reorderedData = newUpdatedData.map(partition => {
+            const updatedPartition = {
+                ...partition,
+                Window_Schedule: Array.isArray(partition.Window_Schedule)
+                    ? partition.Window_Schedule.map(ws => {
+                        const updatedWs = {
+                            ...ws,
+                            WindowStartSeconds: Math.max(0, Math.min(cumulativeStart.toFixed(4), majorFrameSeconds - parseFloat(ws.WindowDurationSeconds)))
+                        };
+                        cumulativeStart += parseFloat(updatedWs.WindowDurationSeconds);
+                        return updatedWs;
+                    })
+                    : [{ ...partition.Window_Schedule, WindowStartSeconds: Math.max(0, Math.min(cumulativeStart.toFixed(4), majorFrameSeconds - parseFloat(partition.PeriodDurationSeconds))) }]
+            };
+            cumulativeStart += parseFloat(partition.PeriodDurationSeconds);
+            return updatedPartition;
+        });
+    
+        setUpdatedData(reorderedData);
+        setIsModified(true); // Mark as modified
     };
 
     // Handle change in window schedule fields
     const handleFieldChange = (field, newValue, item) => {
         const windowIdentifier = item.Window_Schedule.WindowIdentifier;
-
+    
         let newFormattedValue = newValue;
         if (!isNaN(newValue) && field !== 'WindowIdentifier') {
             newFormattedValue = parseFloat(newValue).toFixed(4);
         }
-
+    
+        if (field === "WindowStartSeconds") {
+            const newWindowStartSeconds = parseFloat(newValue);
+            const windowDurationSeconds = parseFloat(item.Window_Schedule.WindowDurationSeconds);
+            if (newWindowStartSeconds + windowDurationSeconds > majorFrameSeconds) {
+                alert("The sum of Window Start Seconds and Window Duration Seconds cannot exceed Major Frame Seconds.");
+                return;
+            }
+        }
+    
+        if (field === "WindowDurationSeconds") {
+            const newWindowDurationSeconds = parseFloat(newValue);
+            const windowStartSeconds = parseFloat(item.Window_Schedule.WindowStartSeconds);
+            if (windowStartSeconds + newWindowDurationSeconds > majorFrameSeconds) {
+                alert("The sum of Window Start Seconds and Window Duration Seconds cannot exceed Major Frame Seconds.");
+                return;
+            }
+        }
+    
         const newUpdatedData = updatedData.map(partition =>
             partition.PartitionIdentifier === item.PartitionIdentifier
                 ? {
@@ -153,10 +168,11 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                 }
                 : partition
         );
-
+    
         setUpdatedData(newUpdatedData);
         setIsModified(true); // Mark as modified
     };
+    
 
     // Handle core change in window schedule
     const handleCoreChange = (e, item) => {
@@ -287,8 +303,40 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
         }
     };
 
+    const checkForOverlaps = () => {
+        for (let coreIndex = 0; coreIndex < Core; coreIndex++) {
+            const corePartitions = updatedData.flatMap(partition => {
+                const windowSchedules = Array.isArray(partition.Window_Schedule) ? partition.Window_Schedule : [partition.Window_Schedule];
+                return windowSchedules.filter(ws => {
+                    const windowConfig = Array.isArray(partition.WindowConfiguration)
+                        ? partition.WindowConfiguration.find(config => config.WindowIdentifier === ws.WindowIdentifier)
+                        : partition.WindowConfiguration;
+                    return windowConfig && parseInt(windowConfig.Cores) === coreIndex;
+                }).map(ws => ({
+                    start: parseFloat(ws.WindowStartSeconds),
+                    end: parseFloat(ws.WindowStartSeconds) + parseFloat(ws.WindowDurationSeconds),
+                    partition: partition.PartitionName
+                }));
+            });
+
+            corePartitions.sort((a, b) => a.start - b.start);
+
+            for (let i = 0; i < corePartitions.length - 1; i++) {
+                if (corePartitions[i].end > corePartitions[i + 1].start) {
+                    alert(`Overlap detected between partitions ${corePartitions[i].partition} and ${corePartitions[i + 1].partition} on core ${coreIndex}.`);
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
     // Update Firebase with the latest data
     const updateFirebase = async () => {
+        if (checkForOverlaps()) {
+            return;
+        }
+
         await setDoc(doc(db, 'Configurations', documentId), {
             ...data, // Ensure to update the entire document structure as needed
             ARINC_653_Module: {
@@ -332,10 +380,9 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                     <h1>
                         Window Scheduler: {currentData.ScheduleName}
                     </h1>
-                    <div style={{display:"flex",gap:"20px"}}>
-
-                    <button onClick={addCore} className={styles.saveButton}>Add Core</button>
-                    <button onClick={updateFirebase} className={styles.saveButton}>Save</button>
+                    <div style={{ display: "flex", gap: "20px" }}>
+                        <button onClick={addCore} className={styles.saveButton}>Add Core</button>
+                        <button onClick={updateFirebase} className={styles.saveButton}>Save</button>
                     </div>
                 </div>
             </div>

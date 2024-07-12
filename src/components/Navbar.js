@@ -26,14 +26,14 @@ const Navbar = () => {
 
   return (
     <>
-      <div className={style.navbar}>
-        <li>
-          <Link to="/" style={{ textDecoration: "none" }}>
-            <img src={logo} alt="Logo" key={logo} />
-          </Link>
-        </li>
+      {user && (
+        <div className={style.navbar}>
+          <li>
+            <Link to="/" style={{ textDecoration: "none" }}>
+              <img src={logo} alt="Logo" key={logo} />
+            </Link>
+          </li>
 
-        {user && (
           <div className={style.userInfo}>
             <button className={style.userButton} onClick={toggleDropdown}>
               {user.email || "User"}
@@ -46,8 +46,8 @@ const Navbar = () => {
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 };

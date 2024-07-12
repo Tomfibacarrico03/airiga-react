@@ -8,6 +8,7 @@ import styles from '../styles/visualizer.module.css'; // Import the CSS module
 import dagre from 'dagre';
 import Scheduler from '../components/Scheduler';
 import { extractSchedule } from '../utils/extractSchedule';
+import options from '../lib/options';
 
 const nodeWidth = 130;
 const nodeHeight = 36;
@@ -102,12 +103,95 @@ const NodeDetailsCard = ({ nodeData, onClose, onSave }) => {
     }));
   };
 
+  const handleCheckboxChange = (e, key) => {
+    const { value, checked } = e.target;
+    setDetails((prevDetails) => {
+      const currentValues = prevDetails[key] ? prevDetails[key].split(';').map(v => v.trim()) : [];
+      
+      if (checked) {
+        console.log(1);
+        currentValues.push(value);
+      } else {
+        console.log(0);
+
+        // If there's only one value left, prevent unchecking
+        if (currentValues.length > 1) {
+          const index = currentValues.indexOf(value);
+          if (index > -1) {
+            currentValues.splice(index, 1);
+          }
+        } else {
+          // Prevent unchecking if only one box is checked
+          e.preventDefault();
+          alert('At least one must be checked');
+          return prevDetails;
+        }
+      }
+  
+      const updatedValues = currentValues.join('; ');
+  
+      // Log the number of boxes selected
+      console.log(`Number of boxes selected for ${key}: ${currentValues.length}`);
+  
+      return {
+        ...prevDetails,
+        [key]: updatedValues,
+      };
+    });
+  };
+  
+  
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(details);
   };
 
-  const filteredDetails = Object.entries(details).filter(([key, value]) => typeof value !== 'object');
+  const findMatchingOptionKey = (value) => {
+    return Object.keys(options).find((key) => options[key].includes(value.trim()));
+  };
+
+  const renderInputField = (key, value) => {
+    const matchingOptionKey = Object.keys(options).find(optKey =>
+      options[optKey].some(option => value.split(';').map(v => v.trim()).includes(option))
+    );
+
+    if (matchingOptionKey) {
+      if (matchingOptionKey.endsWith('_CHECK')) {
+        const currentValues = value.split(';').map(v => v.trim());
+        return (
+          <div className={styles.checkboxGroup}>
+            {options[matchingOptionKey].map((opt) => (
+              <label key={opt} className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  name={key}
+                  value={opt}
+                  checked={currentValues.includes(opt)}
+                  onChange={(e) => handleCheckboxChange(e, key)}
+                  className={styles.hiddenCheckbox}
+                />
+                <span className={styles.customCheckbox}></span>
+                {opt}
+              </label>
+            ))}
+          </div>
+        );
+      } else {
+        return (
+          <select name={key} value={value} onChange={handleInputChange}>
+            {options[matchingOptionKey].map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        );
+      }
+    }
+
+    return <input type={key.includes('Seconds') ? 'number' : 'text'} name={key} value={value} onChange={handleInputChange} />;
+  };
 
   return (
     <div className={styles.nodedetailscard}>
@@ -115,17 +199,19 @@ const NodeDetailsCard = ({ nodeData, onClose, onSave }) => {
         <h2>{nodeData.label}</h2>
         <button onClick={onClose} className={styles.closebutton}>Close</button>
       </div>
-      {nodeData.details.WindowIdentifier ? <p>Please use the scheduler</p> :
+      {nodeData.details.WindowIdentifier ? (
+        <p>Please use the scheduler</p>
+      ) : (
         <form onSubmit={handleSubmit} className={styles.detailsform}>
-          {filteredDetails.map(([key, value]) => (
+          {Object.entries(details).filter(([key, value]) => typeof value !== 'object').map(([key, value]) => (
             <div key={key} className={styles.formgroup}>
               <label>{key}</label>
-              <input type={key.includes('Seconds') ? 'number' : 'text'} name={key} value={value} onChange={handleInputChange} />
+              {renderInputField(key, value)}
             </div>
           ))}
           <button type="submit">Save</button>
         </form>
-      }
+      )}
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { ResizableBox } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 
 // Component for draggable and resizable boxes
-const DraggableResizableBox = ({ item, children, width, height, minConstraints, maxConstraints, onResizeStop, left, handleFieldChange, windowSchedule, majorFrameSeconds }) => {
+const DraggableResizableBox = ({ item, children, width, height, minConstraints, maxConstraints, onResizeStop, left, handleFieldChange, windowSchedule, majorFrameSeconds, velocityFactor = 0.5 }) => {
     const ref = useRef(null);
     const [initialX, setInitialX] = useState(null);
 
@@ -13,7 +13,7 @@ const DraggableResizableBox = ({ item, children, width, height, minConstraints, 
 
     const handleDrag = (e) => {
         if (initialX !== null) {
-            const deltaX = e.clientX - initialX;
+            const deltaX = (e.clientX - initialX) * velocityFactor; // Apply the velocity factor here
             const newStartSeconds = parseFloat(windowSchedule.WindowStartSeconds) + (deltaX / width) * majorFrameSeconds;
 
             if (newStartSeconds >= 0 && newStartSeconds <= majorFrameSeconds - parseFloat(windowSchedule.WindowDurationSeconds)) {
