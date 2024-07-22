@@ -63,6 +63,8 @@
 
 .formGroup {
   margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
 }
 
 .formGroup label {
@@ -91,6 +93,7 @@
 .dragOver {
   background-color: #f0f0f0;
 }
+
 
 .startButton, .submitButton {
   padding: 10px 20px;

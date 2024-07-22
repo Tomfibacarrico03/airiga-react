@@ -29,7 +29,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
     useEffect(() => {
         // Initialize updatedData from currentData
         setUpdatedData(currentData.Partition_Schedule);
-    }, [currentData]);
+    }, [currentData.Partition_Schedule]);
 
     // Function to generate random color with good contrast
     function getRandomColor() {
@@ -57,14 +57,14 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
         return brightness < 128;
     }
 
-    // Generate colors for partitions
+    // Generate colors for partitions only once when the component mounts
     useEffect(() => {
         const newColors = {};
         currentData.Partition_Schedule.forEach(item => {
             newColors[item.PartitionIdentifier] = getRandomColor();
         });
         setColors(newColors);
-    }, [currentData]);
+    }, []); // Empty dependency array ensures this runs only once
 
     const majorFrameSeconds = parseFloat(currentData.MajorFrameSeconds);
     const windowWidth = useRef(window.innerWidth * 0.8);
@@ -99,14 +99,11 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                 if (ws.WindowIdentifier === currentWindowId && partition.PartitionIdentifier === currentPartitionId) return; // Skip current window
                 var core = 0;
                 if (partition.WindowConfiguration) {
-
-
                     const windowConfig = normalizeWindowConfiguration(partition.WindowConfiguration)
-                    .find(config => config.WindowIdentifier === ws.WindowIdentifier);
+                        .find(config => config.WindowIdentifier === ws.WindowIdentifier);
 
                     core = windowConfig ? parseInt(windowConfig.Cores) : 0; // Default to core 0 if no WindowConfiguration
                 }
-
 
                 if (core !== currentCore) return; // Skip different cores
 
@@ -156,49 +153,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
     };
 
     // Handle resize stop event for resizable box
-    const handleResizeStop = (event, { size }, item) => {
-        const newDuration = (size.width / windowWidth.current) * majorFrameSeconds;
-        const newUpdatedData = updatedData.map(partition => {
-            if (partition.PartitionIdentifier === item.PartitionIdentifier) {
-                const updatedWindowSchedules = Array.isArray(partition.Window_Schedule)
-                    ? partition.Window_Schedule.map(ws =>
-                        ws.WindowIdentifier === item.Window_Schedule.WindowIdentifier
-                            ? { ...ws, WindowDurationSeconds: newDuration.toFixed(4) }
-                            : ws
-                    )
-                    : [{ ...partition.Window_Schedule, WindowDurationSeconds: newDuration.toFixed(4) }];
-
-                return {
-                    ...partition,
-                    Window_Schedule: updatedWindowSchedules,
-                    PeriodDurationSeconds: updatedWindowSchedules.reduce((sum, ws) => sum + parseFloat(ws.WindowDurationSeconds), 0).toFixed(4)
-                };
-            }
-            return partition;
-        });
-
-        let cumulativeStart = 0;
-        const reorderedData = newUpdatedData.map(partition => {
-            const updatedPartition = {
-                ...partition,
-                Window_Schedule: Array.isArray(partition.Window_Schedule)
-                    ? partition.Window_Schedule.map(ws => {
-                        const updatedWs = {
-                            ...ws,
-                            WindowStartSeconds: Math.max(0, Math.min(cumulativeStart.toFixed(4), majorFrameSeconds - parseFloat(ws.WindowDurationSeconds)))
-                        };
-                        cumulativeStart += parseFloat(updatedWs.WindowDurationSeconds);
-                        return updatedWs;
-                    })
-                    : [{ ...partition.Window_Schedule, WindowStartSeconds: Math.max(0, Math.min(cumulativeStart.toFixed(4), majorFrameSeconds - parseFloat(partition.PeriodDurationSeconds))) }]
-            };
-            cumulativeStart += parseFloat(partition.PeriodDurationSeconds);
-            return updatedPartition;
-        });
-
-        setUpdatedData(reorderedData);
-        setIsModified(true); // Mark as modified
-    };
+    const handleResizeStop = (event, { size }, item) => {};
 
     // Handle change in window schedule fields
     const handleFieldChange = (field, newValue, item, applyThresholdLogic = false) => {
@@ -222,8 +177,6 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
             const currentPartition = updatedData.find(partition => partition.PartitionIdentifier === item.PartitionIdentifier);
             var currentCore = 0;
             if (currentPartition.WindowConfiguration) {
-
-
                 const currentWindowConfig = normalizeWindowConfiguration(currentPartition.WindowConfiguration)
                     .find(config => config.WindowIdentifier === windowIdentifier);
 
@@ -333,7 +286,7 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                                 config,
                                 {
                                     ...config,
-                                    WindowIdentifier: `${partition.Window_Schedule.length + 1}`
+                                    WindowIdentifier: `${partition.WindowConfiguration.length + 1}`
                                 }
                             ];
                         }
@@ -565,11 +518,11 @@ const Scheduler = ({ data, documentId, onSwitchToVisualizer }) => {
                                         return (
                                             <React.Fragment key={`${partition.PartitionIdentifier}-${windowSchedule.WindowIdentifier}-time`}>
                                                 <div className={styles.startTime} style={{ left: left }}>
-                                                    {startSeconds.toFixed(2)}s
+                                                    {startSeconds.toFixed(3)}s
                                                 </div>
                                                 {(startSeconds + durationSeconds) < majorFrameSeconds ?
                                                     <div className={styles.startTime} style={{ left: left + width }}>
-                                                        {(startSeconds + durationSeconds).toFixed(2)}s
+                                                        {(startSeconds + durationSeconds).toFixed(3)}s
                                                     </div>
                                                     : null}
                                             </React.Fragment>

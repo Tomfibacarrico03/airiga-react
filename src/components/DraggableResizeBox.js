@@ -16,11 +16,17 @@ const DraggableResizableBox = ({ item, children, width, height, minConstraints, 
     const handleDrag = (e) => {
         if (initialX !== null && initialStartSeconds !== null) {
             const deltaX = (e.clientX - initialX) * velocityFactor;
-            const newStartSeconds = initialStartSeconds + (deltaX / width) * majorFrameSeconds;
+            var newStartSeconds = initialStartSeconds + (deltaX / width) * majorFrameSeconds;
 
             if (newStartSeconds >= 0 && newStartSeconds <= majorFrameSeconds - parseFloat(windowSchedule.WindowDurationSeconds)) {
+                if(newStartSeconds < 0.009){
+                    newStartSeconds = 0
+                }
+                if (newStartSeconds + parseFloat(windowSchedule.WindowDurationSeconds) > majorFrameSeconds - 0.009) {
+                    newStartSeconds = majorFrameSeconds - parseFloat(windowSchedule.WindowDurationSeconds)
+                }
                 handleFieldChange('WindowStartSeconds', newStartSeconds.toFixed(4), item);
-            }
+            }   
         }
     };
 
@@ -38,17 +44,11 @@ const DraggableResizableBox = ({ item, children, width, height, minConstraints, 
             onDrag={handleDrag}
             onDragEnd={handleDragEnd}
         >
-            <ResizableBox
-                width={width}
-                height={height}
-                axis="x"
-                resizeHandles={['e']}
-                onResizeStop={onResizeStop}
-                minConstraints={minConstraints}
-                maxConstraints={maxConstraints}
+            <div
+                style={{width:width+"px", height:height+"px"}}
             >
                 {children}
-            </ResizableBox>
+            </div>
         </div>
     );
 };
