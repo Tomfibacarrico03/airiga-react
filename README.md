@@ -1,6 +1,8 @@
 Download node.js from https://nodejs.org/en
 In the root of the project run:
+
 npm install
+
 npm start
 
 ---------------------------
